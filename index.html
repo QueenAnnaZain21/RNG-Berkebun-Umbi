@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>RNG Umbi World 2D - Farmer Edition</title>
+    <title>RNG Umbi World 2D - Variatif Edition</title>
     <style>
         * {
             margin: 0;
@@ -73,7 +73,6 @@
             pointer-events: auto;
         }
 
-        /* Badge versi Ringkas (Icon Only + Angka) */
         .stat-badge {
             background: rgba(0, 0, 0, 0.75);
             border: 1.5px solid rgba(255, 255, 255, 0.2);
@@ -92,7 +91,7 @@
             color: #FFD700;
         }
 
-        /* --- UI Controls Right (Diturunkan agar tidak menabrak) --- */
+        /* --- UI Controls Right --- */
         .hud-buttons {
             position: absolute;
             right: 8px;
@@ -274,14 +273,13 @@
     <!-- Canvas Utama Game -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Top HUD Bar (Ringkas untuk Layar HP) -->
+    <!-- Top HUD Bar -->
     <div class="hud-header">
         <div class="brand-box">
             <div class="brand-title">🌱 RNG UMBI</div>
             <div class="farmer-name-tag" id="farmerNameDisplay">👨‍🌾 Queen</div>
         </div>
         <div class="stats-container">
-            <!-- Hanya Icon Emoji + Nilai Angka -->
             <div class="stat-badge">💰 <span class="val" id="coinDisplay">0</span></div>
             <div class="stat-badge">🍀 <span class="val" id="luckDisplay">1.0x</span></div>
             <div class="stat-badge">📚 <span class="val" id="codexDisplay">0/10</span></div>
@@ -368,7 +366,7 @@
             </div>
             <button class="btn-ui" onclick="saveFarmerName()">💾 Simpan Nama</button>
             <div style="background: rgba(76, 175, 80, 0.15); border: 1px solid #4caf50; padding: 8px; border-radius: 6px; font-size: 0.75rem; color: #a5d6a7;">
-                ✅ <b>Auto-Save Aktif:</b> Koin, Luck, dan Tas Panen kamu tersimpan otomatis di browser ini.
+                ✅ <b>Auto-Save Aktif:</b> Data game tersimpan otomatis di browser ini.
             </div>
             <button class="btn-ui" style="background: #b71c1c; border-color: #ef5350;" onclick="resetProgress()">⚠️ Reset Semua Progress</button>
         </div>
@@ -401,7 +399,7 @@
             { id: 10, name: "Porang Emas", rarity: "GODLY", chance: 0.01, icon: "✨", color: "#ffd700", price: 10000, desc: "Umbi komoditas bernilai super tinggi.", fact: "Bahan baku pembuatan beras shirataki dan jelly bernilai ekspor!" }
         ];
 
-        // --- SAVED PROGRESS SYSTEM (LocalStorage) ---
+        // --- SAVED PROGRESS ---
         let farmerName = localStorage.getItem('rng_farmer_name') || 'Queen';
         let coins = parseInt(localStorage.getItem('rng_coins')) || 0;
         let luckLevel = parseFloat(localStorage.getItem('rng_luck')) || 1.0;
@@ -422,7 +420,6 @@
             localStorage.setItem('rng_codex', JSON.stringify(Array.from(discoveredCodex)));
         }
 
-        // Canvas & Resize setup
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -433,7 +430,6 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Player & Map Setup
         const player = { x: 0, y: 0, size: 18, speed: 4, vx: 0, vy: 0 };
         let plots = [];
 
@@ -480,7 +476,6 @@
         document.getElementById('btnAction').addEventListener('click', interactPlot);
         window.addEventListener('keydown', e => { if (e.code === 'Space') interactPlot(); });
 
-        // Update loop
         function update() {
             player.vx = 0;
             player.vy = 0;
@@ -503,32 +498,168 @@
             });
         }
 
-        // Draw Landscape & Farmer
+        // --- CUSTOM VISUAL RENDERING DARI MASING-MASING UMBI ---
+        function drawCustomCrop(ctx, crop, x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            switch(crop.id) {
+                case 1: // Singkong (Pohon dengan batang tinggi & daun menjari)
+                    ctx.fillStyle = '#6d4c41';
+                    ctx.fillRect(-3, -25, 6, 25);
+                    ctx.fillStyle = '#388e3c';
+                    for(let i=0; i<5; i++) {
+                        ctx.beginPath();
+                        ctx.ellipse((i-2)*6, -28, 4, 12, (i-2)*0.3, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                    break;
+
+                case 2: // Ubi Jalar Kuning (Sulur Daun Merambat Hati)
+                    ctx.fillStyle = '#4caf50';
+                    ctx.beginPath();
+                    ctx.arc(-10, -5, 8, 0, Math.PI*2);
+                    ctx.arc(10, -8, 9, 0, Math.PI*2);
+                    ctx.arc(0, -15, 10, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffa726'; // Ubi mengintip
+                    ctx.beginPath();
+                    ctx.ellipse(4, 2, 8, 4, 0.2, 0, Math.PI*2);
+                    ctx.fill();
+                    break;
+
+                case 3: // Kentang (Semak Rimbun & Bunga Putih)
+                    ctx.fillStyle = '#2e7d32';
+                    ctx.beginPath();
+                    ctx.arc(0, -10, 14, 0, Math.PI*2);
+                    ctx.fill();
+                    // Bunga Kentang
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(-4, -20, 3, 0, Math.PI*2);
+                    ctx.arc(4, -18, 3, 0, Math.PI*2);
+                    ctx.fill();
+                    break;
+
+                case 4: // Ubi Ungu (Semak Hijau Keunguan)
+                    ctx.fillStyle = '#388e3c';
+                    ctx.beginPath();
+                    ctx.arc(0, -10, 14, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.fillStyle = '#8e24aa'; // Daun muda ungu
+                    ctx.beginPath();
+                    ctx.arc(-5, -16, 6, 0, Math.PI*2);
+                    ctx.arc(5, -14, 6, 0, Math.PI*2);
+                    ctx.fill();
+                    break;
+
+                case 5: // Bawang Merah (Daun Jarum Pipa Tegak + Umbi Merah)
+                    ctx.strokeStyle = '#43a047';
+                    ctx.lineWidth = 3;
+                    for(let i=-2; i<=2; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(i*4, 0);
+                        ctx.lineTo(i*6, -22);
+                        ctx.stroke();
+                    }
+                    ctx.fillStyle = '#ef5350';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 7, 0, Math.PI*2);
+                    ctx.fill();
+                    break;
+
+                case 6: // Wortel (Daun Bulu/Renda + Ujung Wortel Oranye)
+                    ctx.fillStyle = '#ff7043'; // Umbi Oranye menyembul
+                    ctx.beginPath();
+                    ctx.arc(0, 2, 7, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#66bb6a';
+                    ctx.lineWidth = 2;
+                    for(let i=-2; i<=2; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, -2);
+                        ctx.lineTo(i*7, -22);
+                        ctx.stroke();
+                    }
+                    break;
+
+                case 7: // Talas Bogor (Daun Lebar Raksasa / Telinga Gajah)
+                    ctx.fillStyle = '#795548'; // Batang pelepah
+                    ctx.fillRect(-2, -15, 4, 15);
+                    ctx.fillStyle = '#2e7d32'; // Daun Talas Lebar
+                    ctx.beginPath();
+                    ctx.ellipse(0, -20, 18, 12, 0, 0, Math.PI*2);
+                    ctx.fill();
+                    break;
+
+                case 8: // Bawang Putih Tunggal (Daun Lurus + Umbi Putih)
+                    ctx.fillStyle = '#eceff1';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 8, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#81c784';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(-3, -2); ctx.lineTo(-6, -24);
+                    ctx.moveTo(3, -2); ctx.lineTo(6, -24);
+                    ctx.stroke();
+                    break;
+
+                case 9: // Lobak Putih (Lobak Putih Panjang Menyembul)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.roundRect(-6, -8, 12, 16, 5);
+                    ctx.fill();
+                    ctx.fillStyle = '#4caf50';
+                    ctx.beginPath();
+                    ctx.arc(0, -10, 10, 0, Math.PI*2);
+                    ctx.fill();
+                    break;
+
+                case 10: // Porang Emas (Pohon Emas Berkilau Sparkle)
+                    ctx.fillStyle = '#ffd700';
+                    ctx.shadowColor = '#ffd700';
+                    ctx.shadowBlur = 15;
+                    ctx.fillRect(-3, -20, 6, 20);
+                    ctx.beginPath();
+                    ctx.arc(0, -24, 14, 0, Math.PI*2);
+                    ctx.fill();
+                    // Sparkles
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText('✨', -10, -25);
+                    ctx.fillText('✨', 6, -15);
+                    ctx.shadowBlur = 0;
+                    break;
+
+                default:
+                    ctx.font = '28px sans-serif';
+                    ctx.fillText(crop.icon, 0, 0);
+            }
+            ctx.restore();
+        }
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
             ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
 
-            // 1. Rumput Taman Hijau Muda
+            // 1. Rumput Kebun
             ctx.fillStyle = '#8bc34a';
             ctx.fillRect(-600, -500, 1200, 1000);
 
-            // 2. Tepi Taman (Pagar Kayu & Pohon Dekorasi)
+            // 2. Tepi Taman & Pohon
             ctx.fillStyle = '#689f38';
             ctx.fillRect(-600, -500, 1200, 20);
             ctx.fillRect(-600, 480, 1200, 20);
             ctx.fillRect(-600, -500, 20, 1000);
             ctx.fillRect(580, -500, 20, 1000);
 
-            // Dekorasi Bunga & Pohon
             for(let x = -550; x <= 550; x += 150) {
-                // Pohon Atas
                 ctx.fillStyle = '#2e7d32';
                 ctx.beginPath();
                 ctx.arc(x, -460, 20, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Bunga Bawah
                 ctx.fillStyle = (x % 300 === 0) ? '#e91e63' : '#ffeb3b';
                 ctx.beginPath();
                 ctx.arc(x + 50, 450, 5, 0, Math.PI * 2);
@@ -564,13 +695,8 @@
                     ctx.arc(plot.x, plot.y, 7 * progress, 0, Math.PI * 2);
                     ctx.fill();
                 } else if (plot.state === 'READY') {
-                    ctx.shadowColor = plot.crop.color;
-                    ctx.shadowBlur = 10;
-                    ctx.font = '28px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(plot.crop.icon, plot.x, plot.y);
-                    ctx.shadowBlur = 0;
+                    // Panggil Renderer Khusus Gambar Tanaman Umbi Variatif
+                    drawCustomCrop(ctx, plot.crop, plot.x, plot.y);
                 }
             });
 
@@ -609,7 +735,6 @@
         }
         requestAnimationFrame(gameLoop);
 
-        // --- LOGIKA GACHA & INTERAKSI ---
         function interactPlot() {
             let closestPlot = null;
             let minDistance = 70;
@@ -655,7 +780,6 @@
             return UMBI_DATABASE[0];
         }
 
-        // --- UI & MODAL MANAGEMENT ---
         function showGachaReveal(umbi) {
             const overlay = document.getElementById('gachaOverlay');
             const rarityEl = document.getElementById('gachaRarity');
@@ -784,7 +908,6 @@
             });
         }
 
-        // Init UI
         updateUI();
     </script>
 </body>
