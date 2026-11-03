@@ -2,1188 +2,735 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RNG Umbi-Umbian - Edu Game</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts & Canvas Confetti -->
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        fredoka: ['Fredoka', 'sans-serif'],
-                        sans: ['Plus Jakarta Sans', 'sans-serif'],
-                    },
-                    animation: {
-                        'pulse-glow': 'pulseGlow 2s infinite alternate',
-                        'spin-slow': 'spin 12s linear infinite',
-                        'bounce-subtle': 'bounceSubtle 1.5s infinite alternate',
-                    },
-                    keyframes: {
-                        pulseGlow: {
-                            '0%': { filter: 'drop-shadow(0 0 15px rgba(255, 255, 255, 0.4))' },
-                            '100%': { filter: 'drop-shadow(0 0 35px rgba(255, 255, 255, 0.9))' }
-                        },
-                        bounceSubtle: {
-                            '0%': { transform: 'translateY(0)' },
-                            '100%': { transform: 'translateY(-10px)' }
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RNG Umbi World 2D</title>
     <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);
-            color: #f8fafc;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
             user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            touch-action: none;
+            background-color: #122410;
         }
 
-        .title-font {
-            font-family: 'Fredoka', sans-serif;
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: #1a4314;
         }
 
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.85);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+        /* --- UI HUD Top Bar --- */
+        .hud-header {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
         }
 
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
+        .brand-box {
+            background: rgba(20, 40, 20, 0.85);
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            pointer-events: auto;
         }
-        ::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.6);
+
+        .brand-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #4CAF50;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(99, 102, 241, 0.5);
-            border-radius: 999px;
+
+        .stats-container {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .stat-badge {
+            background: rgba(0, 0, 0, 0.75);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 14px;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-badge span.val {
+            color: #FFD700;
+        }
+
+        /* --- UI Controls Right --- */
+        .hud-buttons {
+            position: absolute;
+            right: 15px;
+            top: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .btn-ui {
+            background: linear-gradient(135deg, #2e7d32, #1b5e20);
+            color: white;
+            border: 2px solid #81c784;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-ui:hover {
+            transform: scale(1.05);
+            background: linear-gradient(135deg, #388e3c, #2e7d32);
+        }
+
+        /* --- Touch Controls (Mobile) --- */
+        .touch-controls {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(3, 50px);
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .dpad-btn {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: white;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .action-btn-mobile {
+            position: absolute;
+            bottom: 30px;
+            right: 25px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            border: 3px solid #ffe082;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            z-index: 10;
+            touch-action: manipulation;
+        }
+
+        /* --- Modal Windows --- */
+        .modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 90%;
+            max-width: 550px;
+            max-height: 80vh;
+            background: #1e2c1e;
+            border: 3px solid #4caf50;
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            display: none;
+            flex-direction: column;
+            z-index: 100;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            overflow-y: auto;
+            opacity: 0;
+            transition: all 0.2s ease;
+        }
+
+        .modal.active {
+            display: flex;
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .modal-close {
+            background: #d32f2f;
+            border: none;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* --- Item Cards --- */
+        .grid-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 12px;
+        }
+
+        .card-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .card-item img, .card-icon {
+            width: 45px;
+            height: 45px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        /* --- Gacha Cutscene --- */
+        #gachaOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .gacha-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px currentColor;
+            animation: pulse 1s infinite alternate;
+        }
+
+        .gacha-card {
+            background: #253525;
+            border: 4px solid #fff;
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 40px currentColor;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); }
+            100% { transform: scale(1.05); }
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between relative selection:bg-indigo-500 selection:text-white h-screen">
+<body>
 
-    <!-- TOP NAV / STATS -->
-    <header class="w-full max-w-5xl mx-auto p-3 sm:p-4 flex flex-wrap justify-between items-center z-20 gap-2 absolute top-0 left-0 right-0 pointer-events-none">
-        <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-400 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/30">
-                🌱
-            </div>
-            <div>
-                <h1 class="title-font text-lg sm:text-2xl font-bold bg-gradient-to-r from-amber-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent">
-                    RNG UMBI WORLD 2D
-                </h1>
-                <p class="text-[10px] sm:text-xs text-slate-400">Jalan & Tanam Benih di Kebun!</p>
-            </div>
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Top HUD Bar -->
+    <div class="hud-header">
+        <div class="brand-box">
+            <div class="brand-title">🌱 RNG Umbi World</div>
+            <div style="font-size: 0.75rem; color: #a5d6a7;">Jalan & Tanam Benih di Kebun!</div>
         </div>
+        <div class="stats-container">
+            <div class="stat-badge">💰 Koin: <span class="val" id="coinDisplay">0</span></div>
+            <div class="stat-badge">🍀 Luck: <span class="val" id="luckDisplay">1x</span></div>
+            <div class="stat-badge">📚 Ensiklopedia: <span class="val" id="codexDisplay">0/10</span></div>
+        </div>
+    </div>
 
-        <!-- STATS BADGES & CURRENCY -->
-        <div class="flex flex-wrap gap-2 items-center pointer-events-auto">
-            <div class="glass-panel px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-2 border border-amber-500/30">
-                <span class="text-base sm:text-lg">🪙</span>
+    <!-- Right Control Buttons -->
+    <div class="hud-buttons">
+        <button class="btn-ui" onclick="toggleModal('inventoryModal')">🎒 Tas Panen</button>
+        <button class="btn-ui" onclick="toggleModal('shopModal')">🛒 Toko Upgrade</button>
+        <button class="btn-ui" onclick="toggleModal('codexModal')">📚 Ensiklopedia</button>
+    </div>
+
+    <!-- Mobile Touch Controls -->
+    <div class="touch-controls">
+        <div></div>
+        <button class="dpad-btn" id="btnUp">▲</button>
+        <div></div>
+        <button class="dpad-btn" id="btnLeft">◀</button>
+        <div></div>
+        <button class="dpad-btn" id="btnRight">▶</button>
+        <div></div>
+        <button class="dpad-btn" id="btnDown">▼</button>
+        <div></div>
+    </div>
+    <button class="action-btn-mobile" id="btnAction">TANAM /<br>PANEN</button>
+
+    <!-- Inventory Modal -->
+    <div class="modal" id="inventoryModal">
+        <div class="modal-header">
+            <h3>🎒 Tas Panen Umbi</h3>
+            <button class="modal-close" onclick="toggleModal('inventoryModal')">X</button>
+        </div>
+        <button class="btn-ui" style="margin-bottom: 15px; justify-content: center; background: #c62828;" onclick="sellAll()">💰 Jual Semua Umbi</button>
+        <div class="grid-list" id="inventoryContainer"></div>
+    </div>
+
+    <!-- Shop Modal -->
+    <div class="modal" id="shopModal">
+        <div class="modal-header">
+            <h3>🛒 Toko Upgrade Kebun</h3>
+            <button class="modal-close" onclick="toggleModal('shopModal')">X</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="card-item" style="display: flex; justify-content: space-between; align-items: center; text-align: left;">
                 <div>
-                    <div class="text-[9px] text-slate-400 font-bold uppercase leading-none">Koin</div>
-                    <span id="coin-count" class="title-font text-sm sm:text-lg font-bold text-amber-300">0</span>
+                    <b>🍀 Pupuk keberuntungan (Luck Multiplier)</b><br>
+                    <small style="color: #aaa;">Meningkatkan peluang umbi langka & mythic</small><br>
+                    <span style="color: #FFD700;" id="luckCostText">Harga: 50 Koin</span>
                 </div>
+                <button class="btn-ui" onclick="buyLuck()">Upgrade</button>
             </div>
-            <div class="glass-panel px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-2 border border-slate-700/50">
-                <span class="text-[10px] text-slate-400 font-semibold">PANEN:</span>
-                <span id="roll-count" class="title-font text-sm sm:text-lg font-bold text-emerald-400">0</span>
-            </div>
-            <div class="glass-panel px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-2 border border-slate-700/50">
-                <span class="text-[10px] text-slate-400 font-semibold">KOLEKSI:</span>
-                <span id="collection-count" class="title-font text-sm sm:text-lg font-bold text-cyan-400">0 / 10</span>
-            </div>
-        </div>
-    </header>
-
-    <!-- FULLSCREEN 2D TOP-DOWN GAME CANVAS -->
-    <main class="w-full h-full relative overflow-hidden flex-1">
-        <canvas id="gameCanvas" class="w-full h-full block"></canvas>
-
-        <!-- ACTION HUD OVERLAY (TOP DOWN INTERACTION) -->
-        <div id="interaction-hud" class="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none transition-all duration-300 opacity-0 scale-90">
-            <div class="glass-panel px-4 py-2 rounded-2xl border border-emerald-400/50 shadow-2xl flex items-center gap-3">
-                <div id="hud-icon" class="text-2xl animate-bounce">🌱</div>
-                <div class="text-left">
-                    <div id="hud-title" class="title-font font-bold text-sm text-emerald-300">Petak Kebun</div>
-                    <div id="hud-sub" class="text-[11px] text-slate-300">Dekati untuk menanam / memanen</div>
-                </div>
-            </div>
-            <button id="btn-action" class="pointer-events-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-emerald-500 to-cyan-500 hover:scale-105 text-slate-950 title-font font-black text-base shadow-xl active:scale-95 transition-all">
-                [ SPASI / KLIK ] TANAM BENIH
-            </button>
-        </div>
-
-        <!-- TOUCH VIRTUAL JOYSTICK FOR MOBILE -->
-        <div id="touch-joystick-zone" class="absolute bottom-6 left-6 w-32 h-32 rounded-full bg-slate-800/40 border border-white/10 z-20 md:hidden flex items-center justify-center touch-none">
-            <div id="touch-joystick-knob" class="w-12 h-12 rounded-full bg-indigo-500/80 shadow-lg border border-indigo-300"></div>
-        </div>
-
-        <!-- MOBILE ACTION BTN -->
-        <button id="btn-mobile-action" onclick="handleInteraction()" class="absolute bottom-8 right-6 w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-emerald-500 text-slate-950 font-black title-font text-xs flex flex-col items-center justify-center border-2 border-white/40 shadow-2xl z-20 md:hidden active:scale-90 transition-transform">
-            <span class="text-xl">✨</span>
-            <span id="mobile-btn-text">AKSI</span>
-        </button>
-    </main>
-
-    <!-- NAVIGATION BAR AT BOTTOM -->
-    <footer class="w-full max-w-xl mx-auto px-4 z-20 grid grid-cols-3 gap-2 sm:gap-3 absolute bottom-3 left-0 right-0 pointer-events-none">
-        <button onclick="openInventory()" class="pointer-events-auto glass-panel py-2.5 px-3 rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-1.5 border border-amber-500/30 hover:border-amber-500/60 hover:bg-slate-800/80 transition-all text-amber-300 font-bold text-xs title-font shadow-lg">
-            <span class="text-lg">🎒</span>
-            <span>INVENTORY</span>
-        </button>
-        <button onclick="openShop()" class="pointer-events-auto glass-panel py-2.5 px-3 rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-1.5 border border-emerald-500/30 hover:border-emerald-500/60 hover:bg-slate-800/80 transition-all text-emerald-300 font-bold text-xs title-font shadow-lg">
-            <span class="text-lg">🛒</span>
-            <span>TOKO UPGRADE</span>
-        </button>
-        <button onclick="openHerbarium()" class="pointer-events-auto glass-panel py-2.5 px-3 rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-1.5 border border-cyan-500/30 hover:border-cyan-500/60 hover:bg-slate-800/80 transition-all text-cyan-300 font-bold text-xs title-font shadow-lg">
-            <span class="text-lg">📚</span>
-            <span>HERBARIUM</span>
-        </button>
-    </footer>
-
-    <!-- INVENTORY MODAL -->
-    <div id="inventory-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="glass-panel max-w-2xl w-full rounded-3xl p-6 border border-white/20 shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="flex justify-between items-center mb-4">
+            <div class="card-item" style="display: flex; justify-content: space-between; align-items: center; text-align: left;">
                 <div>
-                    <h2 class="title-font text-2xl font-bold text-amber-300 flex items-center gap-2">
-                        <span>🎒</span> Tas Hasil Panen
-                    </h2>
-                    <p class="text-xs text-slate-400">Jual umbi hasil gacha untuk mendapatkan koin upgrade!</p>
+                    <b>⚡ Siraman Kilat (Speed Upgrade)</b><br>
+                    <small style="color: #aaa;">Mempercepat waktu pertumbuhan tanaman</small><br>
+                    <span style="color: #FFD700;" id="speedCostText">Harga: 75 Koin</span>
                 </div>
-                <button onclick="closeInventory()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold">✕</button>
-            </div>
-
-            <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-2xl border border-slate-800 mb-4">
-                <div class="text-xs text-slate-300 font-semibold">
-                    Total Umbi Simpanan: <span id="inv-total-count" class="text-amber-400 font-bold">0</span>
-                </div>
-                <button onclick="sellAllInventory()" class="py-2 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black title-font text-xs tracking-wider shadow-md active:scale-95 transition-all">
-                    💰 JUAL SEMUA UMBI
-                </button>
-            </div>
-
-            <div id="inventory-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto p-1 pr-2 flex-1">
-                <!-- Dynamic Items -->
+                <button class="btn-ui" onclick="buySpeed()">Upgrade</button>
             </div>
         </div>
     </div>
 
-    <!-- SHOP MODAL -->
-    <div id="shop-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="glass-panel max-w-lg w-full rounded-3xl p-6 border border-white/20 shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <h2 class="title-font text-2xl font-bold text-emerald-300 flex items-center gap-2">
-                        <span>🛒</span> Toko Perkakas Pertanian
-                    </h2>
-                    <p class="text-xs text-slate-400">Tingkatkan Keberuntungan (Luck), Kecepatan & Pendapatan!</p>
-                </div>
-                <button onclick="closeShop()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold">✕</button>
-            </div>
+    <!-- Codex/Herbarium Modal -->
+    <div class="modal" id="codexModal">
+        <div class="modal-header">
+            <h3>📚 Buku Herbarium Umbi</h3>
+            <button class="modal-close" onclick="toggleModal('codexModal')">X</button>
+        </div>
+        <div class="grid-list" id="codexContainer"></div>
+    </div>
 
-            <div class="space-y-3 overflow-y-auto pr-1">
-                <!-- Upgrade Luck -->
-                <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-700/60 flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-emerald-950 border border-emerald-500/40 flex items-center justify-center text-2xl">🍀</div>
-                        <div>
-                            <h4 class="title-font text-sm font-bold text-white">Benih Unggul (Luck Boost)</h4>
-                            <p class="text-[11px] text-slate-400">Level: <span id="lvl-luck" class="text-emerald-400 font-bold">1</span> | Boost: <span id="val-luck" class="text-emerald-300 font-bold">+0%</span></p>
-                        </div>
-                    </div>
-                    <button onclick="buyUpgrade('luck')" id="btn-buy-luck" class="py-2 px-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black title-font text-xs transition-all active:scale-95 flex items-center gap-1">
-                        <span>🪙</span> <span id="cost-luck">100</span>
-                    </button>
-                </div>
-
-                <!-- Upgrade Speed -->
-                <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-700/60 flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-2xl">⚡</div>
-                        <div>
-                            <h4 class="title-font text-sm font-bold text-white">Pupuk Kilat (Speed Boost)</h4>
-                            <p class="text-[11px] text-slate-400">Level: <span id="lvl-speed" class="text-cyan-400 font-bold">1</span> | Waktu Tanam Cepat</p>
-                        </div>
-                    </div>
-                    <button onclick="buyUpgrade('speed')" id="btn-buy-speed" class="py-2 px-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black title-font text-xs transition-all active:scale-95 flex items-center gap-1">
-                        <span>🪙</span> <span id="cost-speed">150</span>
-                    </button>
-                </div>
-
-                <!-- Upgrade Multiplier -->
-                <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-700/60 flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-amber-950 border border-amber-500/40 flex items-center justify-center text-2xl">💰</div>
-                        <div>
-                            <h4 class="title-font text-sm font-bold text-white">Pasar Premium (Income Boost)</h4>
-                            <p class="text-[11px] text-slate-400">Level: <span id="lvl-income" class="text-amber-400 font-bold">1</span> | Harga Jual <span id="val-income" class="text-amber-300 font-bold">1x</span></p>
-                        </div>
-                    </div>
-                    <button onclick="buyUpgrade('income')" id="btn-buy-income" class="py-2 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black title-font text-xs transition-all active:scale-95 flex items-center gap-1">
-                        <span>🪙</span> <span id="cost-income">200</span>
-                    </button>
-                </div>
-
-                <!-- Upgrade Move Speed -->
-                <div class="bg-slate-900/70 p-4 rounded-2xl border border-slate-700/60 flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-indigo-950 border border-indigo-500/40 flex items-center justify-center text-2xl">🏃</div>
-                        <div>
-                            <h4 class="title-font text-sm font-bold text-white">Sepatu Lari (Move Speed)</h4>
-                            <p class="text-[11px] text-slate-400">Level: <span id="lvl-movespeed" class="text-indigo-400 font-bold">1</span> | Lari Lebih Cepat</p>
-                        </div>
-                    </div>
-                    <button onclick="buyUpgrade('movespeed')" id="btn-buy-movespeed" class="py-2 px-3.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-black title-font text-xs transition-all active:scale-95 flex items-center gap-1">
-                        <span>🪙</span> <span id="cost-movespeed">100</span>
-                    </button>
-                </div>
-            </div>
+    <!-- Gacha Reveal Cutscene -->
+    <div id="gachaOverlay">
+        <div class="gacha-title" id="gachaRarity">COMMON</div>
+        <div class="gacha-card" id="gachaCard">
+            <div id="gachaIcon" style="font-size: 5rem; margin-bottom: 10px;">🥔</div>
+            <h2 id="gachaName" style="color: #fff; margin-bottom: 10px;">Singkong</h2>
+            <p id="gachaDesc" style="color: #ddd; font-size: 0.9rem; margin-bottom: 10px;"></p>
+            <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; color: #81c784; font-size: 0.85rem;" id="gachaFact"></div>
+            <button class="btn-ui" style="margin: 15px auto 0; justify-content: center;" onclick="closeGacha()">Simpan ke Tas</button>
         </div>
     </div>
 
-    <!-- CUTSCENE OVERLAY FOR DRAMATIC ROLLS -->
-    <div id="cutscene-modal" class="fixed inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-4 hidden transition-opacity duration-300">
-        <div id="cutscene-aura" class="absolute w-[500px] h-[500px] rounded-full blur-[140px] opacity-40 animate-spin-slow"></div>
-        
-        <div class="relative z-10 flex flex-col items-center text-center max-w-lg w-full">
-            <div id="cutscene-rarity-title" class="title-font text-sm uppercase tracking-widest font-extrabold px-4 py-1.5 rounded-full mb-6 border shadow-2xl">
-                - RARITY -
-            </div>
-
-            <div id="cutscene-icon-box" class="w-48 h-48 sm:w-64 sm:h-64 my-6 animate-pulse-glow flex items-center justify-center">
-                <!-- SVG Icon injected here -->
-            </div>
-
-            <h1 id="cutscene-name" class="title-font text-3xl sm:text-5xl font-black mb-2 drop-shadow-lg tracking-wide">
-                NAMA UMBI
-            </h1>
-
-            <p id="cutscene-chance" class="text-lg font-bold text-slate-300 mb-2">
-                1/100,000
-            </p>
-            <p id="cutscene-value" class="text-base font-extrabold text-amber-300 mb-8">
-                🪙 Nilai: 500 Koin
-            </p>
-
-            <button onclick="closeCutscene()" class="py-3 px-8 rounded-2xl bg-white text-slate-950 title-font font-black text-lg hover:bg-slate-200 transition-all shadow-xl active:scale-95">
-                KLAIM & PELAJARI!
-            </button>
-        </div>
-    </div>
-
-    <!-- DETAIL / FACT MODAL -->
-    <div id="detail-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="glass-panel max-w-lg w-full rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button onclick="closeDetailModal()" class="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-lg font-bold transition-colors">
-                ✕
-            </button>
-
-            <div class="flex items-center gap-4 mb-4">
-                <div id="detail-icon" class="w-16 h-16 rounded-2xl bg-slate-900/80 p-2 border border-slate-700 flex items-center justify-center flex-shrink-0">
-                    <!-- SVG -->
-                </div>
-                <div>
-                    <span id="detail-rarity" class="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border">
-                        RARITY
-                    </span>
-                    <h2 id="detail-name" class="title-font text-2xl font-bold text-white mt-1">
-                        Nama Umbi
-                    </h2>
-                    <p id="detail-chance" class="text-xs text-slate-400 font-semibold"></p>
-                </div>
-            </div>
-
-            <hr class="border-slate-700/60 my-4" />
-
-            <div class="space-y-4 text-left text-sm text-slate-200">
-                <div>
-                    <h3 class="font-bold text-amber-400 text-xs uppercase tracking-wider mb-1">📖 Deskripsi & Ciri-ciri</h3>
-                    <p id="detail-desc" class="leading-relaxed bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-slate-300"></p>
-                </div>
-
-                <div>
-                    <h3 class="font-bold text-emerald-400 text-xs uppercase tracking-wider mb-1">🥗 Kandungan Nutrisi & Manfaat</h3>
-                    <p id="detail-nutrition" class="leading-relaxed bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-slate-300"></p>
-                </div>
-
-                <div>
-                    <h3 class="font-bold text-cyan-400 text-xs uppercase tracking-wider mb-1">💡 Fun Fact (Fakta Unik)</h3>
-                    <div class="bg-gradient-to-r from-cyan-950/40 to-slate-900 p-3.5 rounded-xl border border-cyan-800/40 text-cyan-200 flex gap-3 items-start">
-                        <span class="text-xl">✨</span>
-                        <p id="detail-fact" class="italic leading-relaxed"></p>
-                    </div>
-                </div>
-            </div>
-
-            <button onclick="closeDetailModal()" class="w-full mt-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold title-font transition-all">
-                Tutup Kartu Edukasi
-            </button>
-        </div>
-    </div>
-
-    <!-- HERBARIUM / INDEX MODAL -->
-    <div id="herbarium-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
-        <div class="glass-panel max-w-3xl w-full rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h2 class="title-font text-2xl font-bold text-white flex items-center gap-2">
-                        <span>📚</span> Herbarium & Ensiklopedia Umbi
-                    </h2>
-                    <p class="text-xs text-slate-400">Klik umbi yang telah ditemukan untuk membaca buku panduan edukasinya.</p>
-                </div>
-                <button onclick="closeHerbarium()" class="w-9 h-9 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-lg font-bold transition-colors">
-                    ✕
-                </button>
-            </div>
-
-            <!-- GRID ITEMS -->
-            <div id="herbarium-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3 overflow-y-auto p-1 pr-2 flex-1">
-                <!-- Dynamic Items -->
-            </div>
-        </div>
-    </div>
-
-    <!-- GAME LOGIC, TOP-DOWN CANVAS ENGINE & AUDIO SYNTH -->
     <script>
-        /* --- SOUND EFFECTS (Web Audio API) --- */
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        let audioCtx = null;
-
-        function initAudio() {
-            if (!audioCtx) audioCtx = new AudioContext();
-        }
-
-        function playSound(type) {
-            try {
-                initAudio();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-
-                const now = audioCtx.currentTime;
-
-                if (type === 'throw') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(600, now);
-                    osc.frequency.exponentialRampToValueAtTime(150, now + 0.15);
-                    gain.gain.setValueAtTime(0.15, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
-                    osc.start(now);
-                    osc.stop(now + 0.15);
-                } else if (type === 'grow') {
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(200, now);
-                    osc.frequency.exponentialRampToValueAtTime(450, now + 0.3);
-                    gain.gain.setValueAtTime(0.2, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
-                    osc.start(now);
-                    osc.stop(now + 0.3);
-                } else if (type === 'common') {
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(300, now);
-                    osc.frequency.exponentialRampToValueAtTime(500, now + 0.2);
-                    gain.gain.setValueAtTime(0.2, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
-                    osc.start(now);
-                    osc.stop(now + 0.2);
-                } else if (type === 'rare') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(523.25, now);
-                    osc.frequency.setValueAtTime(659.25, now + 0.1);
-                    osc.frequency.setValueAtTime(783.99, now + 0.2);
-                    gain.gain.setValueAtTime(0.3, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
-                    osc.start(now);
-                    osc.stop(now + 0.4);
-                } else if (type === 'legendary') {
-                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
-                        const subOsc = audioCtx.createOscillator();
-                        const subGain = audioCtx.createGain();
-                        subOsc.connect(subGain);
-                        subGain.connect(audioCtx.destination);
-                        subOsc.type = 'triangle';
-                        subOsc.frequency.setValueAtTime(freq, now + idx * 0.08);
-                        subGain.gain.setValueAtTime(0.25, now + idx * 0.08);
-                        subGain.gain.linearRampToValueAtTime(0.01, now + 0.8);
-                        subOsc.start(now + idx * 0.08);
-                        subOsc.stop(now + 0.8);
-                    });
-                } else if (type === 'sell') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(800, now);
-                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.12);
-                    gain.gain.setValueAtTime(0.2, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
-                    osc.start(now);
-                    osc.stop(now + 0.12);
-                }
-            } catch(e) {}
-        }
-
-        /* --- DATA UMBI-UMBIAN --- */
-        const UMBI_DATA = [
-            {
-                id: 'singkong',
-                name: 'Singkong / Ubi Kayu',
-                chance: 2,
-                baseValue: 10,
-                rarity: 'Common',
-                color: '#a3e635',
-                bgClass: 'bg-lime-950/40',
-                desc: 'Tanaman pangan akar pohon tinggi asal Amerika Selatan. Sangat tahan kekeringan.',
-                nutrition: 'Kaya Karbohidrat kompleks, Serat, Karotin, dan Vitamin C. Bebas gluten alami!',
-                fact: 'Singkong mentah mengandung linamarin (sianida alami), sehingga WAJIB dimasak matang sebelum dimakan.',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M25,75 Q40,30 75,25 Q85,45 65,80 Q40,90 25,75 Z" fill="#854d0e" stroke="#543109" stroke-width="3"/><path d="M30,70 Q42,38 70,30" fill="none" stroke="#a16207" stroke-width="2" stroke-dasharray="3,3"/><path d="M72,23 Q80,10 88,15 Q82,28 72,23 Z" fill="#65a30d"/></svg>`
-            },
-            {
-                id: 'ubijalar',
-                name: 'Ubi Jalar / Mantang',
-                chance: 5,
-                baseValue: 25,
-                rarity: 'Uncommon',
-                color: '#fb923c',
-                bgClass: 'bg-orange-950/40',
-                desc: 'Umbi berasa manis dengan warna kulit oranye/kemerahan yang tumbuh menjalar.',
-                nutrition: 'Kaya Vitamin A (Beta-karoten tinggi), Vitamin B6, Kalium, dan Indeks Glikemik rendah.',
-                fact: 'Ubi jalar adalah makanan astronaut NASA karena nutrisinya yang lengkap dan mudah dibudidayakan!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M20,50 Q30,20 70,30 Q90,60 65,80 Q30,85 20,50 Z" fill="#ea580c" stroke="#9a3412" stroke-width="3"/><path d="M28,48 Q40,32 68,36 Q80,58 60,72" fill="none" stroke="#f97316" stroke-width="2"/></svg>`
-            },
-            {
-                id: 'kentang',
-                name: 'Kentang (Potato)',
-                chance: 12,
-                baseValue: 60,
-                rarity: 'Rare',
-                color: '#facc15',
-                bgClass: 'bg-yellow-950/40',
-                desc: 'Umbi batang sangat populer. Tanaman umbi terpenting keempat di dunia.',
-                nutrition: 'Mengandung Kalium (lebih tinggi dari pisang!), Vitamin B6, Karbohidrat & Antioksidan.',
-                fact: 'Kentang adalah makanan pertama yang berhasil dipanen di luar angkasa pada tahun 1995!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><ellipse cx="50" cy="52" rx="35" ry="28" fill="#ca8a04" stroke="#713f12" stroke-width="3" transform="rotate(-10 50 52)"/><circle cx="35" cy="42" r="2.5" fill="#713f12"/><circle cx="60" cy="45" r="2" fill="#713f12"/><circle cx="48" cy="62" r="3" fill="#713f12"/></svg>`
-            },
-            {
-                id: 'bengkuang',
-                name: 'Bengkuang',
-                chance: 25,
-                baseValue: 120,
-                rarity: 'Rare',
-                color: '#34d399',
-                bgClass: 'bg-emerald-950/40',
-                desc: 'Umbi berbentuk bulat gasing yang sangat kaya air dan bertekstur renyah manis.',
-                nutrition: 'Tinggi Vitamin C, Air, Serat Inulin yang baik sebagai prebiotik usus.',
-                fact: 'Ekstrak bengkuang mengandung pemutih alami yang sering digunakan dalam produk kecantikan!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M50,15 C75,15 85,55 50,85 C15,55 25,15 50,15 Z" fill="#fef08a" stroke="#ca8a04" stroke-width="3"/><path d="M50,15 L50,5" stroke="#15803d" stroke-width="3"/></svg>`
-            },
-            {
-                id: 'talas',
-                name: 'Talas / Taro',
-                chance: 50,
-                baseValue: 250,
-                rarity: 'Epic',
-                color: '#c084fc',
-                bgClass: 'bg-purple-950/40',
-                desc: 'Umbi empuk bergaris halus. Menjadi rasa populer untuk minuman Taro modern.',
-                nutrition: 'Kaya Serat pangan, Kalsium, Fosfor, dan Karbohidrat berindeks glikemik rendah.',
-                fact: 'Daun talas dilapisi lilin alami yang membuat air tidak bisa menempel (efek daun talas)!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M35,30 L65,30 L75,80 Q50,92 25,80 Z" fill="#9333ea" stroke="#581c87" stroke-width="3"/><line x1="30" y1="42" x2="70" y2="42" stroke="#c084fc" stroke-width="2" stroke-dasharray="4,2"/></svg>`
-            },
-            {
-                id: 'gembili',
-                name: 'Gembili',
-                chance: 100,
-                baseValue: 500,
-                rarity: 'Epic',
-                color: '#f472b6',
-                bgClass: 'bg-pink-950/40',
-                desc: 'Umbi tradisional khas Indonesia berukuran kecil berbulu halus dengan tekstur sangat pulen.',
-                nutrition: 'Mengandung Karbohidrat halus, Protein, dan Rendah Lemak.',
-                fact: 'Gembili dahulunya merupakan makanan pokok pengganti nasi yang sangat populer di pulau Jawa!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><ellipse cx="50" cy="50" rx="25" ry="38" fill="#db2777" stroke="#831843" stroke-width="3"/><path d="M40,25 Q60,50 40,75" stroke="#f472b6" stroke-width="2" fill="none"/></svg>`
-            },
-            {
-                id: 'garut',
-                name: 'Garut / Ganyong',
-                chance: 300,
-                baseValue: 1500,
-                rarity: 'Legendary',
-                color: '#38bdf8',
-                bgClass: 'bg-sky-950/40',
-                desc: 'Umbi rimpang berserat halus. Sangat aman dan baik untuk sistem pencernaan.',
-                nutrition: 'Sangat mudah dicerna, kaya Zat Besi, Magnesium, Fosfor, dan Bebas Gluten.',
-                fact: 'Pati garut adalah obat alami terbaik meredakan asam lambung (maag) karena sifatnya yang lembut!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M40,20 Q60,25 55,45 Q70,55 50,85 Q30,75 35,50 Q25,35 40,20 Z" fill="#0284c7" stroke="#075985" stroke-width="3"/></svg>`
-            },
-            {
-                id: 'porang',
-                name: 'Porang / Konjac',
-                chance: 1500,
-                baseValue: 6000,
-                rarity: 'Mythic',
-                color: '#f43f5e',
-                bgClass: 'bg-rose-950/40',
-                desc: 'Umbi ajaib bernilai tinggi yang diolah menjadi beras Shirataki dan Konyaku.',
-                nutrition: 'Hampir 0 Kalori! Sangat tinggi Glukomanan yang efektif menurunkan kolesterol.',
-                fact: 'Porang bisa mengembang hingga 50 kali lipat volumenya jika bercampur air!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><circle cx="50" cy="55" r="32" fill="#e11d48" stroke="#881337" stroke-width="3"/><path d="M50,23 Q45,10 50,2 Q55,10 50,23 Z" fill="#16a34a"/></svg>`
-            },
-            {
-                id: 'gadung',
-                name: 'Gadung (Beracun Ajaib)',
-                chance: 5000,
-                baseValue: 20000,
-                rarity: 'Secret',
-                color: '#a855f7',
-                bgClass: 'bg-fuchsia-950/50',
-                desc: 'Umbi beracun alkaloid Dioscorine alami mentah, namun menjadi keripik super gurih jika diolah tepat.',
-                nutrition: 'Mengandung Karbohidrat tinggi dan senyawa alkaloid berkhasiat medis.',
-                fact: 'Dahulu, racun ekstrak umbi Gadung dioleskan pada anak panah oleh pemburu tradisional!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M50,15 C75,15 85,45 75,75 C60,95 40,95 25,75 C15,45 25,15 50,15 Z" fill="#7e22ce" stroke="#3b0764" stroke-width="3"/><path d="M42,45 A8,8 0 0,1 58,45 L58,52 L42,52 Z" fill="#f5d0fe"/></svg>`
-            },
-            {
-                id: 'ubiungu',
-                name: 'Ubi Ungu Super (Divine)',
-                chance: 30000,
-                baseValue: 100000,
-                rarity: 'Divine',
-                color: '#38edf6',
-                bgClass: 'bg-cyan-950/60',
-                desc: 'Raja segala umbi! Memancarkan warna ungu keemasan dengan nutrisi antioksidan puncak.',
-                nutrition: 'Tinggi Antosianin pembersih radikal bebas, Anti-penuaan, Vitamin C & E.',
-                fact: 'Warna ungunya berasal dari Antosianin murni—antioksidan langka yang sama pada buah Blueberry!',
-                svg: `<svg viewBox="0 0 100 100" class="w-full h-full"><defs><linearGradient id="divineGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a855f7" /><stop offset="50%" stop-color="#06b6d4" /><stop offset="100%" stop-color="#3b82f6" /></linearGradient></defs><path d="M25,50 Q30,15 70,25 Q95,60 70,85 Q30,90 25,50 Z" fill="url(#divineGrad)" stroke="#ec4899" stroke-width="3"/><polygon points="50,20 53,28 62,29 55,35 57,44 50,39 43,44 45,35 38,29 47,28" fill="#ffffff"/></svg>`
-            }
+        // --- DATA UMBI & RNG DATA ---
+        const UMBI_DATABASE = [
+            { id: 1, name: "Singkong", rarity: "COMMON", chance: 40, icon: "🥔", color: "#8d6e63", price: 10, desc: "Bahan makanan pokok alternatif kaya karbohidrat.", fact: "Singkong merupakan sumber karbohidrat terpenting ketiga di daerah tropis!" },
+            { id: 2, name: "Ubi Jalar Kuning", rarity: "UNCOMMON", chance: 25, icon: "🍠", color: "#ffa726", price: 20, desc: "Ubi manis kaya Beta-Karoten dan Vitamin A.", fact: "Warna oranye menandakan tingginya kandungan vitamin pencegah rabun mata." },
+            { id: 3, name: "Kentang", rarity: "RARE", chance: 15, icon: "🥔", color: "#d7ccc8", price: 40, desc: "Umbi batang populer untuk berbagai camilan olahan.", fact: "Kentang adalah tanaman pangan pertama yang pernah ditanam di luar angkasa (1995)!" },
+            { id: 4, name: "Ubi Ungu", rarity: "RARE", chance: 10, icon: "🍠", color: "#ab47bc", price: 60, desc: "Mengandung antioksidan Antosianin yang sangat tinggi.", fact: "Warna ungu alaminya mampu mencegah penuaan dini dan menyehatkan jantung." },
+            { id: 5, name: "Bawang Merah", rarity: "EPIC", chance: 5, icon: "🧅", color: "#ef5350", price: 100, desc: "Bumbu dapur utama pembawa aroma gurih khas masakan.", fact: "Senyawa sulfur di dalamnya memicu sel mata mengeluarkan air mata saat diiris." },
+            { id: 6, name: "Wortel", rarity: "EPIC", chance: 3, icon: "🥕", color: "#ff7043", price: 150, desc: "Umbi akar manis pembawa nutrisi kesehatan mata.", fact: "Dahulu wortel liar berwarna ungu dan kuning, bukan oranye!" },
+            { id: 7, name: "Talas Bogor", rarity: "LEGENDARY", chance: 1.5, icon: "🟤", color: "#8d6e63", price: 300, desc: "Umbi bertekstur empuk lembut khas Kota Hujan.", fact: "Daun talas memiliki efek seperti getah lilin yang tidak basah bila terkena air." },
+            { id: 8, name: "Bawang Putih Tunggal", rarity: "MYTHIC", chance: 0.4, icon: "🧄", color: "#eceff1", price: 750, desc: "Bawang herbal ajaib dengan siung tunggal berkhasiat tinggi.", fact: "Digunakan sejak zaman kuno untuk meningkatkan imunitas tubuh raja-raja." },
+            { id: 9, name: "Lobak Putih", rarity: "DIVINE", chance: 0.09, icon: "🥖", color: "#ffffff", price: 2000, desc: "Umbi putih renyah kaya serat penyegar sistem pencernaan.", fact: "Sering digunakan dalam sup herbal pengeluar racun tubuh alami." },
+            { id: 10, name: "Porang Emas (Golden Porang)", rarity: "GODLY", chance: 0.01, icon: "✨", color: "#ffd700", price: 10000, desc: "Umbi komoditas bernilai super tinggi penghasil Glukomanan.", fact: "Bahan baku pembuatan beras shirataki dan jelly diet transparan bernilai ekspor!" }
         ];
 
-        /* --- GAME STATE & UPGRADES --- */
-        let totalCoins = 0;
-        let totalRolls = 0;
-        let unlockedUmbi = new Set();
-        let inventory = {};
+        // --- GAME STATE ---
+        let coins = 0;
+        let luckLevel = 1;
+        let luckCost = 50;
+        let speedLevel = 1;
+        let speedCost = 75;
+        let inventory = [];
+        let discoveredCodex = new Set();
 
-        let upgrades = {
-            luck: { level: 1, cost: 100, mult: 1.0 },
-            speed: { level: 1, cost: 150, delay: 1.0 },
-            income: { level: 1, cost: 200, mult: 1.0 },
-            movespeed: { level: 1, cost: 100, speed: 3.5 }
-        };
-
-        let lastRolledUmbi = null;
-
-        /* --- TOP DOWN 2D WORLD ENGINE --- */
+        // Canvas Setup & Auto-Resize Fullscreen
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-
-        // Player State
-        const player = {
-            x: 400,
-            y: 300,
-            radius: 16,
-            facing: 'down',
-            isMoving: false
-        };
-
-        // Inputs
-        const keys = {};
-        let joystickVector = { x: 0, y: 0 };
-
-        // Farming Plots Grid (6 Plots)
-        const plots = [
-            { id: 1, x: 250, y: 200, size: 70, state: 'empty', growTimer: 0, resultUmbi: null },
-            { id: 2, x: 400, y: 200, size: 70, state: 'empty', growTimer: 0, resultUmbi: null },
-            { id: 3, x: 550, y: 200, size: 70, state: 'empty', growTimer: 0, resultUmbi: null },
-            { id: 4, x: 250, y: 380, size: 70, state: 'empty', growTimer: 0, resultUmbi: null },
-            { id: 5, x: 400, y: 380, size: 70, state: 'empty', growTimer: 0, resultUmbi: null },
-            { id: 6, x: 550, y: 380, size: 70, state: 'empty', growTimer: 0, resultUmbi: null }
-        ];
-
-        let activeNearbyPlot = null;
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-        /* --- LOCAL STORAGE --- */
-        function loadSave() {
-            const save = JSON.parse(localStorage.getItem('rng_umbi_save_v2') || '{}');
-            if (save.coins !== undefined) totalCoins = save.coins;
-            if (save.rolls !== undefined) totalRolls = save.rolls;
-            if (save.unlocked) unlockedUmbi = new Set(save.unlocked);
-            if (save.inventory) inventory = save.inventory;
-            if (save.upgrades) {
-                upgrades = save.upgrades;
-                if (!upgrades.movespeed) upgrades.movespeed = { level: 1, cost: 100, speed: 3.5 };
-            }
-            
-            updateStatsUI();
-            updateShopUI();
-        }
-
-        function saveGame() {
-            const save = {
-                coins: totalCoins,
-                rolls: totalRolls,
-                unlocked: [...unlockedUmbi],
-                inventory: inventory,
-                upgrades: upgrades
-            };
-            localStorage.setItem('rng_umbi_save_v2', JSON.stringify(save));
-        }
-
-        function updateStatsUI() {
-            document.getElementById('coin-count').innerText = totalCoins.toLocaleString();
-            document.getElementById('roll-count').innerText = totalRolls.toLocaleString();
-            document.getElementById('collection-count').innerText = `${unlockedUmbi.size} / ${UMBI_DATA.length}`;
-        }
-
-        /* --- RNG LOGIC --- */
-        function getRandomUmbi() {
-            const luckFactor = upgrades.luck.mult;
-            const sorted = [...UMBI_DATA].sort((a, b) => b.chance - a.chance);
-            
-            for (let umbi of sorted) {
-                const adjustedChance = Math.max(1, Math.floor(umbi.chance / luckFactor));
-                const rand = Math.floor(Math.random() * adjustedChance) + 1;
-                if (rand === 1) return umbi;
-            }
-            return UMBI_DATA[0];
-        }
-
-        /* --- INTERACTION HANDLER --- */
-        function handleInteraction() {
-            if (!activeNearbyPlot) return;
-            initAudio();
-
-            if (activeNearbyPlot.state === 'empty') {
-                // Start Planting
-                playSound('throw');
-                activeNearbyPlot.state = 'growing';
-                activeNearbyPlot.growTimer = 0;
-                activeNearbyPlot.resultUmbi = getRandomUmbi();
-            } else if (activeNearbyPlot.state === 'ready') {
-                // Harvest Umbi
-                const finalUmbi = activeNearbyPlot.resultUmbi;
-                activeNearbyPlot.state = 'empty';
-                activeNearbyPlot.resultUmbi = null;
-                
-                totalRolls++;
-                lastRolledUmbi = finalUmbi;
-                inventory[finalUmbi.id] = (inventory[finalUmbi.id] || 0) + 1;
-                unlockedUmbi.add(finalUmbi.id);
-                saveGame();
-                updateStatsUI();
-
-                const itemValue = Math.floor(finalUmbi.baseValue * upgrades.income.mult);
-
-                if (finalUmbi.chance >= 1000) {
-                    playSound('legendary');
-                    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-                } else if (finalUmbi.chance >= 50) {
-                    playSound('rare');
-                    confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-                } else {
-                    playSound('common');
-                }
-
-                if (finalUmbi.chance >= 50) {
-                    triggerCutscene(finalUmbi, itemValue);
-                } else {
-                    openDetailModal(finalUmbi);
-                }
-            }
-        }
-
-        /* --- INPUT CONTROLS --- */
-        window.addEventListener('keydown', (e) => {
-            keys[e.key.toLowerCase()] = true;
-            if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                handleInteraction();
-            }
-        });
-        window.addEventListener('keyup', (e) => {
-            keys[e.key.toLowerCase()] = false;
-        });
-
-        document.getElementById('btn-action').onclick = handleInteraction;
-
-        // Virtual Touch Joystick
-        const joystickZone = document.getElementById('touch-joystick-zone');
-        const joystickKnob = document.getElementById('touch-joystick-knob');
-        let touchId = null;
-        let joystickCenter = { x: 0, y: 0 };
-
-        joystickZone.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.changedTouches[0];
-            touchId = touch.identifier;
-            const rect = joystickZone.getBoundingClientRect();
-            joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-            updateJoystick(touch);
-        });
-
-        joystickZone.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            for (let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === touchId) {
-                    updateJoystick(e.changedTouches[i]);
-                    break;
-                }
-            }
-        });
-
-        const resetJoystick = () => {
-            touchId = null;
-            joystickVector = { x: 0, y: 0 };
-            joystickKnob.style.transform = `translate(0px, 0px)`;
+        // Player & Map Setup
+        const player = {
+            x: 0,
+            y: 0,
+            size: 24,
+            speed: 4,
+            vx: 0,
+            vy: 0
         };
 
-        joystickZone.addEventListener('touchend', resetJoystick);
-        joystickZone.addEventListener('touchcancel', resetJoystick);
+        // Create Plots grid based on layout
+        let plots = [];
+        function initPlots() {
+            plots = [];
+            const cols = 4;
+            const rows = 3;
+            const spacingX = 160;
+            const spacingY = 140;
+            const startX = -(cols * spacingX) / 2 + spacingX / 2;
+            const startY = -(rows * spacingY) / 2 + spacingY / 2;
 
-        function updateJoystick(touch) {
-            const dx = touch.clientX - joystickCenter.x;
-            const dy = touch.clientY - joystickCenter.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const maxRadius = 40;
-
-            const angle = Math.atan2(dy, dx);
-            const moveDist = Math.min(dist, maxRadius);
-
-            const knobX = Math.cos(angle) * moveDist;
-            const knobY = Math.sin(angle) * moveDist;
-
-            joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
-            joystickVector = { x: knobX / maxRadius, y: knobY / maxRadius };
-        }
-
-        /* --- GAME LOOP & RENDER 2D WORLD --- */
-        function updatePlayerMovement() {
-            let dx = 0;
-            let dy = 0;
-
-            if (keys['w'] || keys['arrowup']) dy -= 1;
-            if (keys['s'] || keys['arrowdown']) dy += 1;
-            if (keys['a'] || keys['arrowleft']) dx -= 1;
-            if (keys['d'] || keys['arrowright']) dx += 1;
-
-            if (joystickVector.x !== 0 || joystickVector.y !== 0) {
-                dx = joystickVector.x;
-                dy = joystickVector.y;
-            }
-
-            const len = Math.sqrt(dx * dx + dy * dy);
-            if (len > 0) {
-                dx /= len;
-                dy /= len;
-                player.isMoving = true;
-                player.x += dx * upgrades.movespeed.speed;
-                player.y += dy * upgrades.movespeed.speed;
-
-                // Bounds
-                player.x = Math.max(player.radius + 20, Math.min(canvas.width - player.radius - 20, player.x));
-                player.y = Math.max(player.radius + 80, Math.min(canvas.height - player.radius - 80, player.y));
-            } else {
-                player.isMoving = false;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    plots.push({
+                        x: startX + c * spacingX,
+                        y: startY + r * spacingY,
+                        width: 90,
+                        height: 90,
+                        state: 'EMPTY', // EMPTY, GROWING, READY
+                        timer: 0,
+                        maxTime: 100,
+                        crop: null
+                    });
+                }
             }
         }
+        initPlots();
 
-        function updatePlots() {
-            const growSpeed = 0.008 * upgrades.speed.delay;
-            let foundNearby = null;
+        // Input Handling
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
 
+        // Touch Control Bindings
+        const touchBtns = {
+            btnUp: 'KeyW',
+            btnDown: 'KeyS',
+            btnLeft: 'KeyA',
+            btnRight: 'KeyD'
+        };
+
+        Object.keys(touchBtns).forEach(id => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[touchBtns[id]] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[touchBtns[id]] = false; });
+            btn.addEventListener('mousedown', () => keys[touchBtns[id]] = true);
+            btn.addEventListener('mouseup', () => keys[touchBtns[id]] = false);
+        });
+
+        document.getElementById('btnAction').addEventListener('click', interactPlot);
+        window.addEventListener('keydown', e => { if (e.code === 'Space') interactPlot(); });
+
+        // Game Loop
+        function update() {
+            // Movement Logic
+            player.vx = 0;
+            player.vy = 0;
+            if (keys['KeyW'] || keys['ArrowUp']) player.vy = -player.speed;
+            if (keys['KeyS'] || keys['ArrowDown']) player.vy = player.speed;
+            if (keys['KeyA'] || keys['ArrowLeft']) player.vx = -player.speed;
+            if (keys['KeyD'] || keys['ArrowRight']) player.vx = player.speed;
+
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Update Plots
             plots.forEach(plot => {
-                if (plot.state === 'growing') {
-                    plot.growTimer += growSpeed;
-                    if (plot.growTimer >= 1) {
-                        plot.state = 'ready';
-                        playSound('grow');
+                if (plot.state === 'GROWING') {
+                    plot.timer += speedLevel;
+                    if (plot.timer >= plot.maxTime) {
+                        plot.state = 'READY';
+                        plot.crop = rollRNG();
                     }
                 }
-
-                // Check distance to player
-                const dist = Math.hypot(player.x - plot.x, player.y - plot.y);
-                if (dist < 65) {
-                    foundNearby = plot;
-                }
             });
-
-            activeNearbyPlot = foundNearby;
-            const hud = document.getElementById('interaction-hud');
-            const hudTitle = document.getElementById('hud-title');
-            const hudSub = document.getElementById('hud-sub');
-            const hudIcon = document.getElementById('hud-icon');
-            const btnAction = document.getElementById('btn-action');
-            const mobileBtnText = document.getElementById('mobile-btn-text');
-
-            if (activeNearbyPlot) {
-                hud.classList.remove('opacity-0', 'scale-90');
-                hud.classList.add('opacity-100', 'scale-100');
-
-                if (activeNearbyPlot.state === 'empty') {
-                    hudTitle.innerText = "Petak Siap Ditanam!";
-                    hudSub.innerText = "Tekan tombol untuk melempar benih umbi";
-                    hudIcon.innerText = "🌱";
-                    btnAction.innerText = "✨ TANAM BENIH (ROLL)";
-                    mobileBtnText.innerText = "TANAM";
-                } else if (activeNearbyPlot.state === 'growing') {
-                    hudTitle.innerText = "Sedang Tumbuh...";
-                    hudSub.innerText = `Kemajuan: ${Math.floor(activeNearbyPlot.growTimer * 100)}%`;
-                    hudIcon.innerText = "🌿";
-                    btnAction.innerText = "⏳ MENUNGGU MATANG";
-                    mobileBtnText.innerText = "TUMBUH";
-                } else if (activeNearbyPlot.state === 'ready') {
-                    hudTitle.innerText = "UMBI MATANG!";
-                    hudSub.innerText = "Tekan panen untuk memutar Gacha Umbi!";
-                    hudIcon.innerText = "✨";
-                    btnAction.innerText = "🎉 PANEN UMBI!";
-                    mobileBtnText.innerText = "PANEN";
-                }
-            } else {
-                hud.classList.add('opacity-0', 'scale-90');
-                hud.classList.remove('opacity-100', 'scale-100');
-            }
         }
 
-        function drawWorld() {
+        function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Grass Background Pattern
-            ctx.fillStyle = '#14532d';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            // Center camera on Player
+            ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
 
-            // Farm Soil Zone Boundary
-            ctx.fillStyle = '#365314';
-            ctx.beginPath();
-            ctx.roundRect(150, 120, 500, 360, 30);
-            ctx.fill();
-            ctx.strokeStyle = '#4d7c0f';
-            ctx.lineWidth = 6;
-            ctx.stroke();
+            // Draw Garden Soil Area
+            ctx.fillStyle = '#2d5a27';
+            ctx.fillRect(-500, -400, 1000, 800);
+            ctx.strokeStyle = '#388e3c';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(-500, -400, 1000, 800);
 
-            // Label Farm
-            ctx.fillStyle = '#a3e635';
-            ctx.font = 'bold 16px Fredoka, sans-serif';
-            ctx.fillText("🌿 KEBUN UMBI RNG INTERAKTIF", 170, 150);
-
-            // Draw Farming Plots
+            // Draw Plots
             plots.forEach(plot => {
-                // Soil Box
-                ctx.fillStyle = '#451a03';
+                // Dirt Base
+                ctx.fillStyle = '#4e342e';
                 ctx.beginPath();
-                ctx.roundRect(plot.x - plot.size / 2, plot.y - plot.size / 2, plot.size, plot.size, 16);
+                ctx.roundRect(plot.x - plot.width/2, plot.y - plot.height/2, plot.width, plot.height, 12);
                 ctx.fill();
-                ctx.strokeStyle = activeNearbyPlot === plot ? '#f59e0b' : '#78350f';
-                ctx.lineWidth = activeNearbyPlot === plot ? 4 : 2;
+                ctx.strokeStyle = '#3e2723';
+                ctx.lineWidth = 4;
                 ctx.stroke();
 
-                if (plot.state === 'growing') {
-                    // Sprout Anim
-                    const scale = plot.growTimer;
-                    ctx.fillStyle = '#22c55e';
+                // Plant States
+                if (plot.state === 'GROWING') {
+                    const progress = plot.timer / plot.maxTime;
+                    ctx.fillStyle = '#76ff03';
                     ctx.beginPath();
-                    ctx.arc(plot.x, plot.y, 8 * scale, 0, Math.PI * 2);
+                    ctx.arc(plot.x, plot.y, 10 * progress, 0, Math.PI * 2);
                     ctx.fill();
-
-                    // Progress ring
-                    ctx.strokeStyle = '#eab308';
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.arc(plot.x, plot.y, plot.size / 2 - 4, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * plot.growTimer));
-                    ctx.stroke();
-                } else if (plot.state === 'ready') {
-                    // Fully grown Umbi Glow
-                    ctx.save();
-                    ctx.shadowColor = plot.resultUmbi.color;
-                    ctx.shadowBlur = 18;
-                    ctx.fillStyle = plot.resultUmbi.color;
-                    ctx.beginPath();
-                    ctx.arc(plot.x, plot.y, 14, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
-
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 12px Fredoka, sans-serif';
+                } else if (plot.state === 'READY') {
+                    // Glowing Aura
+                    ctx.shadowColor = plot.crop.color;
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = plot.crop.color;
+                    ctx.font = '32px sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.fillText("✨ PANEN!", plot.x, plot.y - 20);
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(plot.crop.icon, plot.x, plot.y);
+                    ctx.shadowBlur = 0; // Reset Shadow
                 }
             });
 
-            // Draw Player Character Top-Down
-            ctx.save();
-            ctx.shadowColor = '#000000';
-            ctx.shadowBlur = 10;
-            
-            // Player Shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            // Draw Player Character
+            ctx.fillStyle = '#ffca28';
             ctx.beginPath();
-            ctx.ellipse(player.x, player.y + 12, 14, 6, 0, 0, Math.PI * 2);
+            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
             ctx.fill();
+            ctx.strokeStyle = '#ffa000';
+            ctx.lineWidth = 3;
+            ctx.stroke();
 
-            // Player Body
-            ctx.fillStyle = '#0284c7';
+            // Player Eye/Direction Indicator
+            ctx.fillStyle = '#333';
             ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Player Hat / Head Top
-            ctx.fillStyle = '#f59e0b';
-            ctx.beginPath();
-            ctx.arc(player.x, player.y - 2, 10, 0, Math.PI * 2);
+            ctx.arc(player.x + 6, player.y - 4, 3, 0, Math.PI * 2);
+            ctx.arc(player.x + 12, player.y - 4, 3, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.restore();
-
-            // Loop
-            updatePlayerMovement();
-            updatePlots();
-            requestAnimationFrame(drawWorld);
         }
 
-        /* --- INVENTORY SYSTEM & SELLING --- */
-        function openInventory() {
-            const modal = document.getElementById('inventory-modal');
-            const grid = document.getElementById('inventory-grid');
-            grid.innerHTML = '';
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        requestAnimationFrame(gameLoop);
 
-            let totalItemsCount = 0;
+        // --- INTERACTION & RNG GACHA ---
+        function interactPlot() {
+            // Find closest plot
+            let closestPlot = null;
+            let minDistance = 80;
 
-            UMBI_DATA.forEach(umbi => {
-                const count = inventory[umbi.id] || 0;
-                totalItemsCount += count;
-
-                if (count > 0) {
-                    const valueEach = Math.floor(umbi.baseValue * upgrades.income.mult);
-                    const card = document.createElement('div');
-                    card.className = "glass-panel p-3 rounded-2xl flex flex-col items-center text-center border border-slate-700/70 hover:border-amber-500/50 transition-all";
-                    card.innerHTML = `
-                        <div class="w-12 h-12 mb-1">${umbi.svg}</div>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border mb-1" style="color: ${umbi.color}; border-color: ${umbi.color};">
-                            ${count}x Unit
-                        </span>
-                        <h4 class="title-font text-xs font-bold text-white line-clamp-1">${umbi.name}</h4>
-                        <div class="text-[10px] font-bold text-amber-300 mt-1 mb-2">🪙 ${valueEach.toLocaleString()} / item</div>
-                        <button onclick="sellSingleItem('${umbi.id}')" class="w-full py-1.5 px-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 font-bold text-[11px] border border-amber-500/40 transition-all">
-                            Jual 1
-                        </button>
-                    `;
-                    grid.appendChild(card);
+            plots.forEach(plot => {
+                const dist = Math.hypot(player.x - plot.x, player.y - plot.y);
+                if (dist < minDistance) {
+                    closestPlot = plot;
                 }
             });
 
-            if (totalItemsCount === 0) {
-                grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 text-sm">Tas hasil panenmu masih kosong! Tanam benih dulu yuk.</div>`;
-            }
+            if (closestPlot) {
+                if (closestPlot.state === 'EMPTY') {
+                    closestPlot.state = 'GROWING';
+                    closestPlot.timer = 0;
+                } else if (closestPlot.state === 'READY') {
+                    const resultUmbi = closestPlot.crop;
+                    closestPlot.state = 'EMPTY';
+                    closestPlot.crop = null;
 
-            document.getElementById('inv-total-count').innerText = totalItemsCount;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
+                    // Add to Inventory & Codex
+                    inventory.push(resultUmbi);
+                    discoveredCodex.add(resultUmbi.id);
 
-        function closeInventory() {
-            document.getElementById('inventory-modal').classList.add('hidden');
-            document.getElementById('inventory-modal').classList.remove('flex');
-        }
-
-        function sellSingleItem(umbiId) {
-            if ((inventory[umbiId] || 0) > 0) {
-                const umbi = UMBI_DATA.find(u => u.id === umbiId);
-                const val = Math.floor(umbi.baseValue * upgrades.income.mult);
-                inventory[umbiId]--;
-                totalCoins += val;
-                playSound('sell');
-                saveGame();
-                updateStatsUI();
-                openInventory();
-            }
-        }
-
-        function sellAllInventory() {
-            let gainedCoins = 0;
-            UMBI_DATA.forEach(umbi => {
-                const count = inventory[umbi.id] || 0;
-                if (count > 0) {
-                    const val = Math.floor(umbi.baseValue * upgrades.income.mult);
-                    gainedCoins += val * count;
-                    inventory[umbi.id] = 0;
+                    // Show Gacha Cutscene Reveal
+                    showGachaReveal(resultUmbi);
+                    updateUI();
                 }
+            }
+        }
+
+        function rollRNG() {
+            // Calculated weight based on luck level
+            const totalLuck = luckLevel;
+            let totalWeight = 0;
+
+            const weightedList = UMBI_DATABASE.map(item => {
+                let adjustedChance = item.chance;
+                if (item.rarity !== 'COMMON') {
+                    adjustedChance *= totalLuck; // Apply Luck Multiplier to rare items
+                }
+                totalWeight += adjustedChance;
+                return { ...item, weight: adjustedChance };
             });
 
-            if (gainedCoins > 0) {
-                totalCoins += gainedCoins;
-                playSound('sell');
-                saveGame();
-                updateStatsUI();
-                openInventory();
+            let randomVal = Math.random() * totalWeight;
+            for (let item of weightedList) {
+                if (randomVal < item.weight) {
+                    return item;
+                }
+                randomVal -= item.weight;
+            }
+            return UMBI_DATABASE[0];
+        }
+
+        // --- CUTSCENE & MODALS ---
+        function showGachaReveal(umbi) {
+            const overlay = document.getElementById('gachaOverlay');
+            const rarityEl = document.getElementById('gachaRarity');
+            const cardEl = document.getElementById('gachaCard');
+
+            rarityEl.innerText = umbi.rarity + "!";
+            rarityEl.style.color = umbi.color;
+            cardEl.style.borderColor = umbi.color;
+            cardEl.style.boxShadow = `0 0 30px ${umbi.color}`;
+
+            document.getElementById('gachaIcon').innerText = umbi.icon;
+            document.getElementById('gachaName').innerText = umbi.name;
+            document.getElementById('gachaDesc').innerText = umbi.desc;
+            document.getElementById('gachaFact').innerText = "💡 Fact: " + umbi.fact;
+
+            overlay.style.display = 'flex';
+        }
+
+        function closeGacha() {
+            document.getElementById('gachaOverlay').style.display = 'none';
+        }
+
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            if (modal.classList.contains('active')) {
+                modal.classList.remove('active');
+                setTimeout(() => modal.style.display = 'none', 200);
+            } else {
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('active'), 10);
+                if (id === 'inventoryModal') renderInventory();
+                if (id === 'codexModal') renderCodex();
             }
         }
 
-        /* --- SHOP UPGRADES --- */
-        function openShop() {
-            updateShopUI();
-            const modal = document.getElementById('shop-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+        // --- ECONOMY & UPGRADES ---
+        function updateUI() {
+            document.getElementById('coinDisplay').innerText = coins;
+            document.getElementById('luckDisplay').innerText = luckLevel.toFixed(1) + 'x';
+            document.getElementById('codexDisplay').innerText = `${discoveredCodex.size}/${UMBI_DATABASE.length}`;
         }
 
-        function closeShop() {
-            document.getElementById('shop-modal').classList.add('hidden');
-            document.getElementById('shop-modal').classList.remove('flex');
+        function sellAll() {
+            let total = 0;
+            inventory.forEach(item => total += item.price);
+            coins += total;
+            inventory = [];
+            renderInventory();
+            updateUI();
         }
 
-        function updateShopUI() {
-            document.getElementById('lvl-luck').innerText = upgrades.luck.level;
-            document.getElementById('val-luck').innerText = `+${Math.round((upgrades.luck.mult - 1) * 100)}%`;
-            document.getElementById('cost-luck').innerText = upgrades.luck.cost.toLocaleString();
-
-            document.getElementById('lvl-speed').innerText = upgrades.speed.level;
-            document.getElementById('cost-speed').innerText = upgrades.speed.cost.toLocaleString();
-
-            document.getElementById('lvl-income').innerText = upgrades.income.level;
-            document.getElementById('val-income').innerText = `${upgrades.income.mult.toFixed(1)}x`;
-            document.getElementById('cost-income').innerText = upgrades.income.cost.toLocaleString();
-
-            document.getElementById('lvl-movespeed').innerText = upgrades.movespeed.level;
-            document.getElementById('cost-movespeed').innerText = upgrades.movespeed.cost.toLocaleString();
-        }
-
-        function buyUpgrade(type) {
-            const upg = upgrades[type];
-            if (totalCoins >= upg.cost) {
-                totalCoins -= upg.cost;
-                upg.level++;
-                upg.cost = Math.floor(upg.cost * 1.8);
-
-                if (type === 'luck') upg.mult += 0.25;
-                if (type === 'speed') upg.delay += 0.25;
-                if (type === 'income') upg.mult += 0.3;
-                if (type === 'movespeed') upg.speed += 0.8;
-
-                playSound('sell');
-                saveGame();
-                updateStatsUI();
-                updateShopUI();
+        function buyLuck() {
+            if (coins >= luckCost) {
+                coins -= luckCost;
+                luckLevel += 0.5;
+                luckCost = Math.floor(luckCost * 1.8);
+                document.getElementById('luckCostText').innerText = `Harga: ${luckCost} Koin`;
+                updateUI();
             }
         }
 
-        /* --- CUTSCENE --- */
-        function triggerCutscene(umbi, val) {
-            const modal = document.getElementById('cutscene-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-
-            document.getElementById('cutscene-aura').style.backgroundColor = umbi.color;
-            const title = document.getElementById('cutscene-rarity-title');
-            title.innerText = `- RARITY: ${umbi.rarity} -`;
-            title.style.color = umbi.color;
-            title.style.borderColor = umbi.color;
-
-            document.getElementById('cutscene-name').innerText = umbi.name;
-            document.getElementById('cutscene-name').style.color = umbi.color;
-            document.getElementById('cutscene-chance').innerText = `PELUANG LANGKA: 1 / ${umbi.chance.toLocaleString()}`;
-            document.getElementById('cutscene-value').innerText = `🪙 Harga Jual: ${val.toLocaleString()} Koin`;
-            document.getElementById('cutscene-icon-box').innerHTML = umbi.svg;
+        function buySpeed() {
+            if (coins >= speedCost) {
+                coins -= speedCost;
+                speedLevel += 0.5;
+                speedCost = Math.floor(speedCost * 1.8);
+                document.getElementById('speedCostText').innerText = `Harga: ${speedCost} Koin`;
+                updateUI();
+            }
         }
 
-        function closeCutscene() {
-            document.getElementById('cutscene-modal').classList.add('hidden');
-            document.getElementById('cutscene-modal').classList.remove('flex');
-            openDetailModal(lastRolledUmbi);
-        }
+        // --- RENDERERS ---
+        function renderInventory() {
+            const container = document.getElementById('inventoryContainer');
+            container.innerHTML = '';
 
-        /* --- DETAIL MODAL & HERBARIUM --- */
-        function openDetailModal(umbi) {
-            const modal = document.getElementById('detail-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            if (inventory.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; color: #888; text-align: center;">Tas masih kosong... Tanam dan panen umbi terlebih dahulu!</div>`;
+                return;
+            }
 
-            document.getElementById('detail-name').innerText = umbi.name;
-            document.getElementById('detail-chance').innerText = `Kelangkaan: 1 / ${umbi.chance.toLocaleString()}`;
-            document.getElementById('detail-icon').innerHTML = umbi.svg;
-            
-            const badge = document.getElementById('detail-rarity');
-            badge.innerText = umbi.rarity;
-            badge.style.color = umbi.color;
-            badge.style.borderColor = umbi.color;
-            badge.className = `text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${umbi.bgClass}`;
-
-            document.getElementById('detail-desc').innerText = umbi.desc;
-            document.getElementById('detail-nutrition').innerText = umbi.nutrition;
-            document.getElementById('detail-fact').innerText = umbi.fact;
-        }
-
-        function closeDetailModal() {
-            document.getElementById('detail-modal').classList.add('hidden');
-            document.getElementById('detail-modal').classList.remove('flex');
-        }
-
-        function openHerbarium() {
-            const modal = document.getElementById('herbarium-modal');
-            const grid = document.getElementById('herbarium-grid');
-            grid.innerHTML = '';
-
-            UMBI_DATA.forEach(umbi => {
-                const isFound = unlockedUmbi.has(umbi.id);
+            inventory.forEach(item => {
                 const card = document.createElement('div');
-                card.className = `glass-panel p-3 rounded-2xl flex flex-col items-center text-center border transition-all ${
-                    isFound ? 'border-slate-700 cursor-pointer hover:border-slate-500 hover:scale-105' : 'border-slate-800/60 opacity-50 grayscale'
-                }`;
-
-                if (isFound) {
-                    card.onclick = () => {
-                        closeHerbarium();
-                        openDetailModal(umbi);
-                    };
-                }
-
+                card.className = 'card-item';
                 card.innerHTML = `
-                    <div class="w-12 h-12 mb-2 flex items-center justify-center">
-                        ${isFound ? umbi.svg : '<span class="text-xl font-black text-slate-600">?</span>'}
-                    </div>
-                    <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border mb-1" style="color: ${isFound ? umbi.color : '#64748b'}; border-color: ${isFound ? umbi.color : '#334155'};">
-                        ${umbi.rarity}
-                    </span>
-                    <h4 class="title-font text-xs font-bold text-white line-clamp-1">
-                        ${isFound ? umbi.name : '???'}
-                    </h4>
+                    <div class="card-icon">${item.icon}</div>
+                    <div style="font-weight: bold; font-size: 0.9rem;">${item.name}</div>
+                    <div style="color: ${item.color}; font-size: 0.75rem; font-weight: bold;">${item.rarity}</div>
+                    <div style="color: #FFD700; font-size: 0.85rem; margin-top: 5px;">💰 ${item.price}</div>
                 `;
-
-                grid.appendChild(card);
+                container.appendChild(card);
             });
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
         }
 
-        function closeHerbarium() {
-            document.getElementById('herbarium-modal').classList.add('hidden');
-            document.getElementById('herbarium-modal').classList.remove('flex');
+        function renderCodex() {
+            const container = document.getElementById('codexContainer');
+            container.innerHTML = '';
+
+            UMBI_DATABASE.forEach(item => {
+                const isDiscovered = discoveredCodex.has(item.id);
+                const card = document.createElement('div');
+                card.className = 'card-item';
+                card.style.opacity = isDiscovered ? '1' : '0.4';
+                card.innerHTML = `
+                    <div class="card-icon">${isDiscovered ? item.icon : '❓'}</div>
+                    <div style="font-weight: bold; font-size: 0.9rem;">${isDiscovered ? item.name : '???'}</div>
+                    <div style="color: ${isDiscovered ? item.color : '#888'}; font-size: 0.75rem; font-weight: bold;">${item.rarity}</div>
+                `;
+                container.appendChild(card);
+            });
         }
 
-        // Init App on Load & Resize
-        window.onload = function() {
-            resizeCanvas();
-            loadSave();
-            requestAnimationFrame(drawWorld);
-        };
-
-        window.onresize = resizeCanvas;
+        // Init UI
+        updateUI();
     </script>
 </body>
 </html>
